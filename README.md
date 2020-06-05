@@ -1,2 +1,1 @@
-# GameClass
-javascript game class
+# Undefined
