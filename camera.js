@@ -3,8 +3,8 @@ class Camera {
         this.targetZoom = 1;
         this.currentZoom = 1;
         this.position = { x: 0, y: 0 };
-        this.stage = undefined; // { position, scale, width, height }
-        this.targetObject = undefined; // { position, scale, width, height }
+        this.stage = undefined;
+        this.targetObject = undefined;
         this.screenWidth = window.innerWidth;
         this.screenHeight = window.innerHeight;
         window.addEventListener('resize', this.resize.bind(this));
