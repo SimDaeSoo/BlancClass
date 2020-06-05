@@ -1,0 +1,2 @@
+# GameClass
+javascript game class
