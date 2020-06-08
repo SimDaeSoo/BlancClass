@@ -1,0 +1,17 @@
+{
+  "name": "BlancClass",
+  "version": "0.0.1",
+  "description": "Class for game make",
+  "main": "index.js",
+  "repository": "https://github.com/SimDaeSoo/BlancClass.git",
+  "author": "SimDaeSoo <tlaeotn123@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node ./test/index.js"
+  },
+  "dependencies": {
+    "pathfinding": "^0.4.18",
+    "seedrandom": "^3.0.5"
+  }
+}

@@ -1,14 +1,22 @@
+import seedrandom from 'seedrandom';
+
 class MapGenerator {
     constructor() {
+        this._seedrandom = seedrandom('');
         this.map = { size: { width: 20, height: 20 }, targetDensity: 0.5, seed: '', tiles: {}, position: { x: 0, y: 0 } };
     }
 
     initialize(size, targetDensity, seed) {
+        this._seedrandom = seedrandom(seed);
         this.map = { size, targetDensity, seed, tiles: {}, position: { x: 0, y: 0 } };
     }
 
+    get seedrandom() {
+        return this._seedrandom();
+    }
+
     generate() {
-        const plateCount = Math.round(Math.sqrt(this.map.size.width * this.map.size.height) / (8 + Math.round(Math.random() * 3) * 3));
+        const plateCount = 1 + Math.round(this.seedrandom * Math.sqrt(this.map.size.width * this.map.size.height) / (8 + Math.round(this.seedrandom * 3) * 3));
         const plates = this.devideMap(plateCount);
         this.merge(plates);
         this.generateBridge(plates);
@@ -50,12 +58,12 @@ class MapGenerator {
             }
 
             if (basePositions.length > 0) {
-                const randomIndex = Math.round(Math.random() * (basePositions.length - 1));
+                const randomIndex = Math.round(this.seedrandom * (basePositions.length - 1));
                 const bridgePosition = basePositions[randomIndex];
 
                 const distance = {
-                    x: bridgePosition.x - position.x + Math.round(Math.random() * 3 - Math.random() * 3),
-                    y: bridgePosition.y - position.y + Math.round(Math.random() * 3 - Math.random() * 3)
+                    x: bridgePosition.x - position.x + Math.round(this.seedrandom * 3 - this.seedrandom * 3),
+                    y: bridgePosition.y - position.y + Math.round(this.seedrandom * 3 - this.seedrandom * 3)
                 }
                 if (Math.abs(distance.x) > Math.abs(distance.y)) {
                     const vector2D = { x: distance.x / Math.abs(distance.x), y: distance.y / Math.abs(distance.x) };
@@ -104,13 +112,13 @@ class MapGenerator {
         const devidablePlates = [firstPlate];
 
         while (plates.length < plateCount && devidablePlates.length > 0) {
-            const randomIndex = Math.round(Math.random() * (devidablePlates.length - 1));
+            const randomIndex = Math.round(this.seedrandom * (devidablePlates.length - 1));
             const devidePlate = devidablePlates[randomIndex];
 
             if (devidePlate.size.width >= 20 && devidePlate.size.height >= 20) {
                 const size = {
-                    width: Math.round(devidePlate.size.width / 5) + Math.round(Math.random() * devidePlate.size.width / 5 * 3),
-                    height: Math.round(devidePlate.size.height / 5) + Math.round(Math.random() * devidePlate.size.height / 5 * 3)
+                    width: Math.round(devidePlate.size.width / 5) + Math.round(this.seedrandom * devidePlate.size.width / 5 * 3),
+                    height: Math.round(devidePlate.size.height / 5) + Math.round(this.seedrandom * devidePlate.size.height / 5 * 3)
                 };
                 devidePlate.size.width -= size.width;
                 devidePlate.size.height -= size.height;
@@ -146,7 +154,7 @@ class MapGenerator {
         const generatableIndexes = [baseIndex];
 
         while (this.getDensity(plate) < plate.targetDensity && generatableIndexes.length > 0) {
-            const randomIndex = Math.round(Math.random() * (generatableIndexes.length - 1));
+            const randomIndex = Math.round(this.seedrandom * (generatableIndexes.length - 1));
             const generateTileIndex = generatableIndexes.splice(randomIndex, 1);
             plate.tiles[generateTileIndex] = 1; // TODO: Tile data로 변경.
 
@@ -207,12 +215,14 @@ class MapGenerator {
                     }
                 } else {
                     line += '  ';
+                    flag = false;
                 }
             }
 
             console.log(line);
         }
 
+        console.log(`seed: ${this.map.seed}`);
         console.log(`target density: ${map.targetDensity * 100}% / density: ${this.getDensity(map) * 100}%`);
         console.log(`width: ${map.size.width * 32}px / height: ${map.size.height * 32}px`);
         console.log(`tiles: ${Object.keys(map.tiles).length} tiles`);
@@ -234,17 +244,4 @@ class MapGenerator {
     }
 }
 
-function main() {
-    const mapGenerator = new MapGenerator();
-    const size = {
-        width: 120,
-        height: 60,
-    };
-    const density = 0.4;
-    setInterval(() => {
-        mapGenerator.initialize(size, density, '');
-        mapGenerator.generate();
-    }, 3000);
-}
-
-main();
+export default MapGenerator;
