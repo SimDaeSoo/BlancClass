@@ -1,14 +1,21 @@
 import seedrandom from 'seedrandom';
+import { merge } from './utils';
 
 class MapGenerator {
     constructor() {
         this._seedrandom = seedrandom('');
-        this.map = { size: { width: 20, height: 20 }, targetDensity: 0.5, seed: '', tiles: {}, position: { x: 0, y: 0 } };
+        this.map = { size: { width: 20, height: 20 }, targetDensity: 0.5, seed: '', tiles: [], position: { x: 0, y: 0 }, polygon: [] };
     }
 
     initialize(size, targetDensity, seed) {
         this._seedrandom = seedrandom(seed);
-        this.map = { size, targetDensity, seed, tiles: {}, position: { x: 0, y: 0 } };
+        this.map = { size, targetDensity, seed, tiles: [], position: { x: 0, y: 0 }, polygon: [] };
+        for (let y = 0; y < size.height; y++) {
+            this.map.tiles.push([]);
+            for (let x = 0; x < size.width; x++) {
+                this.map.tiles[y].push(0);
+            }
+        }
     }
 
     get seedrandom() {
@@ -16,22 +23,88 @@ class MapGenerator {
     }
 
     generate() {
-        const plateCount = 1 + Math.round(this.seedrandom * Math.sqrt(this.map.size.width * this.map.size.height) / (8 + Math.round(this.seedrandom * 3) * 3));
+        const plateCount = 3 + Math.round(this.seedrandom * Math.sqrt(this.map.size.width * this.map.size.height) / (6 + Math.round(this.seedrandom * 3) * 3));
         const plates = this.devideMap(plateCount);
+        plates.forEach(plate => this.generatePlate(plate));
+
         this.merge(plates);
         this.generateBridge(plates);
+        this.ineterpolation(5, 5);
+        this.ineterpolation(6, 5);
+        this.reverse();
+        this.parseTile();
+        this.setPolygon();
         this.printMap(this.map);
+    }
+
+    setPolygon() {
+        const polygon = [];
+
+        for (let y = 1; y < this.map.size.height - 1; y++) {
+            for (let x = 1; x < this.map.size.width - 1; x++) {
+                const tiles = this.map.tiles[y][x];
+
+                if (tiles) {
+                    if (!this.map.tiles[y - 1][x]) {
+                        polygon.push({ sx: x, sy: y, ex: x + 1, ey: y });
+                    }
+                    if (!this.map.tiles[y + 1][x]) {
+                        polygon.push({ sx: x, sy: y + 1, ex: x + 1, ey: y + 1 });
+                    }
+                    if (!this.map.tiles[y][x - 1]) {
+                        polygon.push({ sx: x, sy: y, ex: x, ey: y + 1 });
+                    }
+                    if (!this.map.tiles[y][x + 1]) {
+                        polygon.push({ sx: x + 1, sy: y, ex: x + 1, ey: y + 1 });
+                    }
+                }
+            }
+        }
+
+        const merged = merge(polygon);
+        this.map.polygon = merged;
+    }
+
+    parseTile() {
+        for (let y = 0; y < this.map.size.height; y++) {
+            for (let x = 0; x < this.map.size.width; x++) {
+                this.map.tiles[y][x] = this.map.tiles[y][x];
+            }
+        }
+    }
+
+    reverse() {
+        for (let y = 0; y < this.map.size.height; y++) {
+            for (let x = 0; x < this.map.size.width; x++) {
+                this.map.tiles[y][x] = this.map.tiles[y][x] === 1 ? 0 : 1;
+            }
+        }
+    }
+
+    ineterpolation(neighbor, iterator) {
+        const tiles = this.map.tiles;
+
+        for (let i = 0; i < iterator; i++) {
+            for (let y = 1; y < this.map.size.height - 1; y++) {
+                for (let x = 1; x < this.map.size.width - 1; x++) {
+                    const neighborCount = tiles[y - 1][x - 1] + tiles[y - 1][x] + tiles[y - 1][x + 1] + tiles[y][x - 1] + tiles[y][x + 1] + tiles[y + 1][x - 1] + tiles[y + 1][x] + tiles[y + 1][x + 1];
+                    const tile = tiles[y][x];
+
+                    if (!tile && neighborCount >= neighbor) {
+                        tiles[y][x] = 1;
+                    }
+                }
+            }
+        }
     }
 
     merge(plates) {
         for (const plate of plates) {
-            for (const index in plate.tiles) {
-                const position = this.indexToPosition(plate, index);
-                position.x += plate.position.x;
-                position.y += plate.position.y;
-
-                const mergedIndex = this.positionToIndex(this.map, position);
-                this.map.tiles[mergedIndex] = plate.tiles[index];
+            for (let y = 0; y < plate.tiles.length; y++) {
+                for (let x = 0; x < plate.tiles[y].length; x++) {
+                    const position = { x: x + plate.position.x, y: y + plate.position.y };
+                    this.map.tiles[position.y][position.x] = plate.tiles[y][x];
+                }
             }
         }
     }
@@ -45,7 +118,6 @@ class MapGenerator {
         });
 
         for (let plate of plates) {
-            let hasCurrent = false;
             const position = {
                 x: plate.position.x + Math.round(plate.size.width / 2),
                 y: plate.position.y + Math.round(plate.size.height / 2)
@@ -53,7 +125,6 @@ class MapGenerator {
             for (let index in basePositions) {
                 if (basePositions[index].x === position.x && basePositions[index].y === position.y) {
                     basePositions.splice(index, 1);
-                    hasCurrent = true;
                 }
             }
 
@@ -69,36 +140,56 @@ class MapGenerator {
                     const vector2D = { x: distance.x / Math.abs(distance.x), y: distance.y / Math.abs(distance.x) };
                     for (let x = 0; x < Math.abs(distance.x); x++) {
                         const targetPosition = { x: position.x + x * vector2D.x, y: position.y + Math.round(x * vector2D.y) };
-                        if (targetPosition.x >= 2 && targetPosition.x < this.map.size.width - 2 && targetPosition.y >= 2 && targetPosition.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, targetPosition)] = 1; // TODO : 1 -> Tile Data
+                        if (targetPosition.x >= 2 && targetPosition.x < this.map.size.width - 2 && targetPosition.y >= 2 && targetPosition.y < this.map.size.height - 2) {
+                            this.map.tiles[targetPosition.y][targetPosition.x] = 1; // TODO : 1 -> Tile Data
                         }
 
                         const up = { x: position.x + x * vector2D.x, y: position.y + Math.round(x * vector2D.y) - 1 };
-                        if (up.x >= 2 && up.x < this.map.size.width - 2 && up.y >= 2 && up.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, up)] = 1; // TODO : 1 -> Tile Data
+                        if (up.x >= 2 && up.x < this.map.size.width - 2 && up.y >= 2 && up.y < this.map.size.height - 2) {
+                            this.map.tiles[up.y][up.x] = 1; // TODO : 1 -> Tile Data
                         }
 
                         const down = { x: position.x + x * vector2D.x, y: position.y + Math.round(x * vector2D.y) + 1 };
-                        if (down.x >= 2 && down.x < this.map.size.width - 2 && down.y >= 2 && down.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, down)] = 1; // TODO : 1 -> Tile Data
+                        if (down.x >= 2 && down.x < this.map.size.width - 2 && down.y >= 2 && down.y < this.map.size.height - 2) {
+                            this.map.tiles[down.y][down.x] = 1; // TODO : 1 -> Tile Data
+                        }
+
+                        const up_2 = { x: position.x + x * vector2D.x, y: position.y + Math.round(x * vector2D.y) - 2 };
+                        if (up_2.x >= 2 && up_2.x < this.map.size.width - 2 && up_2.y >= 2 && up_2.y < this.map.size.height - 2) {
+                            this.map.tiles[up_2.y][up_2.x] = 1; // TODO : 1 -> Tile Data
+                        }
+
+                        const down_2 = { x: position.x + x * vector2D.x, y: position.y + Math.round(x * vector2D.y) + 2 };
+                        if (down_2.x >= 2 && down_2.x < this.map.size.width - 2 && down_2.y >= 2 && down_2.y < this.map.size.height - 2) {
+                            this.map.tiles[down_2.y][down_2.x] = 1; // TODO : 1 -> Tile Data
                         }
                     }
                 } else {
                     const vector2D = { x: distance.x / Math.abs(distance.y), y: distance.y / Math.abs(distance.y) };
                     for (let y = 0; y < Math.abs(distance.y); y++) {
                         const targetPosition = { x: position.x + Math.round(y * vector2D.x), y: position.y + y * vector2D.y };
-                        if (targetPosition.x >= 2 && targetPosition.x < this.map.size.width - 2 && targetPosition.y >= 2 && targetPosition.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, targetPosition)] = 1; // TODO : 1 -> Tile Data
+                        if (targetPosition.x >= 2 && targetPosition.x < this.map.size.width - 2 && targetPosition.y >= 2 && targetPosition.y < this.map.size.height - 2) {
+                            this.map.tiles[targetPosition.y][targetPosition.x] = 1; // TODO : 1 -> Tile Data
                         }
 
                         const left = { x: position.x + Math.round(y * vector2D.x) - 1, y: position.y + y * vector2D.y };
-                        if (left.x >= 2 && left.x < this.map.size.width - 2 && left.y >= 2 && left.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, left)] = 1; // TODO : 1 -> Tile Data
+                        if (left.x >= 2 && left.x < this.map.size.width - 2 && left.y >= 2 && left.y < this.map.size.height - 2) {
+                            this.map.tiles[left.y][left.x] = 1; // TODO : 1 -> Tile Data
                         }
 
                         const right = { x: position.x + Math.round(y * vector2D.x) + 1, y: position.y + y * vector2D.y };
-                        if (right.x >= 2 && right.x < this.map.size.width - 2 && right.y >= 2 && right.y < this.map.size.height - 1) {
-                            this.map.tiles[this.positionToIndex(this.map, right)] = 1; // TODO : 1 -> Tile Data
+                        if (right.x >= 2 && right.x < this.map.size.width - 2 && right.y >= 2 && right.y < this.map.size.height - 2) {
+                            this.map.tiles[right.y][right.x] = 1; // TODO : 1 -> Tile Data
+                        }
+
+                        const left_2 = { x: position.x + Math.round(y * vector2D.x) - 2, y: position.y + y * vector2D.y };
+                        if (left_2.x >= 2 && left_2.x < this.map.size.width - 2 && left_2.y >= 2 && left_2.y < this.map.size.height - 2) {
+                            this.map.tiles[left_2.y][left_2.x] = 1; // TODO : 1 -> Tile Data
+                        }
+
+                        const right_2 = { x: position.x + Math.round(y * vector2D.x) + 2, y: position.y + y * vector2D.y };
+                        if (right_2.x >= 2 && right_2.x < this.map.size.width - 2 && right_2.y >= 2 && right_2.y < this.map.size.height - 2) {
+                            this.map.tiles[right_2.y][right_2.x] = 1; // TODO : 1 -> Tile Data
                         }
                     }
                 }
@@ -123,9 +214,9 @@ class MapGenerator {
                 devidePlate.size.width -= size.width;
                 devidePlate.size.height -= size.height;
 
-                const newPlateRU = { size: { width: size.width, height: devidePlate.size.height }, targetDensity: devidePlate.targetDensity, seed: '', tiles: {}, position: { x: devidePlate.position.x + devidePlate.size.width, y: devidePlate.position.y } };
-                const newPlateLD = { size: { width: devidePlate.size.width, height: size.height }, targetDensity: devidePlate.targetDensity, seed: '', tiles: {}, position: { x: devidePlate.position.x, y: devidePlate.position.y + devidePlate.size.height } };
-                const newPlateRD = { size, targetDensity: devidePlate.targetDensity, seed: '', tiles: {}, position: { x: devidePlate.position.x + devidePlate.size.width, y: devidePlate.position.y + devidePlate.size.height } };
+                const newPlateRU = { size: { width: size.width, height: devidePlate.size.height }, targetDensity: devidePlate.targetDensity, seed: '', tiles: [], position: { x: devidePlate.position.x + devidePlate.size.width, y: devidePlate.position.y } };
+                const newPlateLD = { size: { width: devidePlate.size.width, height: size.height }, targetDensity: devidePlate.targetDensity, seed: '', tiles: [], position: { x: devidePlate.position.x, y: devidePlate.position.y + devidePlate.size.height } };
+                const newPlateRD = { size, targetDensity: devidePlate.targetDensity, seed: '', tiles: [], position: { x: devidePlate.position.x + devidePlate.size.width, y: devidePlate.position.y + devidePlate.size.height } };
                 plates.push(newPlateRU);
                 plates.push(newPlateLD);
                 plates.push(newPlateRD);
@@ -137,28 +228,25 @@ class MapGenerator {
             }
         }
 
-        if (devidablePlates.length === 0) {
-            console.log('deviding fail', plateCount, plates.length);
-        }
-
-        for (let plate of plates) {
-            this.generatePlate(plate);
-        }
-
         return plates;
     }
 
     generatePlate(plate) {
+        plate.tiles = [];
+        for (let y = 0; y < plate.size.height; y++) {
+            plate.tiles.push([]);
+            for (let x = 0; x < plate.size.width; x++) {
+                plate.tiles[y].push(0);
+            }
+        }
         const basePosition = { x: Math.round(plate.size.width / 2), y: Math.round(plate.size.height / 2) };
-        const baseIndex = this.positionToIndex(plate, basePosition);
-        const generatableIndexes = [baseIndex];
+        const generatablePositions = [basePosition];
 
-        while (this.getDensity(plate) < plate.targetDensity && generatableIndexes.length > 0) {
-            const randomIndex = Math.round(this.seedrandom * (generatableIndexes.length - 1));
-            const generateTileIndex = generatableIndexes.splice(randomIndex, 1);
-            plate.tiles[generateTileIndex] = 1; // TODO: Tile data로 변경.
+        while (this.getDensity(plate) < plate.targetDensity && generatablePositions.length > 0) {
+            const randomIndex = Math.round(this.seedrandom * (generatablePositions.length - 1));
+            const position = generatablePositions.splice(randomIndex, 1)[0];
+            plate.tiles[position.y][position.x] = 1;
 
-            const position = this.indexToPosition(plate, generateTileIndex);
             const generatableTile = {
                 up: { x: position.x, y: position.y - 1 },
                 down: { x: position.x, y: position.y + 1 },
@@ -168,9 +256,8 @@ class MapGenerator {
 
             for (let direction in generatableTile) {
                 const pos = generatableTile[direction];
-                const index = this.positionToIndex(plate, pos);
-                if (!plate.tiles[index] && pos.x >= 1 && pos.x < plate.size.width - 2 && pos.y >= 1 && pos.y < plate.size.height - 2) {
-                    generatableIndexes.push(index);
+                if (plate.tiles[pos.y] && !plate.tiles[pos.y][pos.x] && pos.x >= 2 && pos.x < plate.size.width - 2 && pos.y >= 2 && pos.y < plate.size.height - 2) {
+                    generatablePositions.push(pos);
                 }
             }
         }
@@ -180,42 +267,26 @@ class MapGenerator {
 
     getDensity(map) {
         const maxDensity = map.size.width * map.size.height;
-        const currentDensity = Object.keys(map.tiles).length;
+        let currentDensity = 0;
+        for (let y = 0; y < map.size.height; y++) {
+            for (let x = 0; x < map.size.width; x++) {
+                if (map.tiles[y][x]) {
+                    currentDensity++;
+                }
+            }
+        }
         return currentDensity / maxDensity;
     }
 
-    positionToIndex(map, position) {
-        const index = position.x + position.y * map.size.width;
-
-        return index;
-    }
-
-    indexToPosition(map, index) {
-        const x = index % map.size.width;
-        const y = Math.floor(index / (map.size.width));
-
-        return { x, y };
-    }
-
     printMap(map) {
-        let wallCount = 0;
         for (let y = 0; y < map.size.height; y++) {
             let line = '';
-            let flag = false;
+
             for (let x = 0; x < map.size.width; x++) {
-                const index = this.positionToIndex(map, { x, y });
-                if (map.tiles[index]) {
+                if (map.tiles[y][x]) {
                     line += '■ ';
-                    flag = false;
-                } else if (this.hasNeighbor(this.map, index)) {
-                    line += '□ ';
-                    if (!flag) {
-                        flag = !flag;
-                        wallCount++;
-                    }
                 } else {
                     line += '  ';
-                    flag = false;
                 }
             }
 
@@ -224,23 +295,9 @@ class MapGenerator {
 
         console.log(`seed: ${this.map.seed}`);
         console.log(`target density: ${map.targetDensity * 100}% / density: ${this.getDensity(map) * 100}%`);
-        console.log(`width: ${map.size.width * 32}px / height: ${map.size.height * 32}px`);
-        console.log(`tiles: ${Object.keys(map.tiles).length} tiles`);
-        console.log(`walls: ${wallCount} tiles`);
-    }
-
-    hasNeighbor(map, index) {
-        const neighbor = {
-            up: index - map.size.width,
-            down: index + map.size.width,
-            left: index - 1,
-            right: index + 1,
-        };
-        let result = false || map.tiles[neighbor.up];
-        result = result || map.tiles[neighbor.down];
-        result = result || map.tiles[neighbor.left];
-        result = result || map.tiles[neighbor.right];
-        return result;
+        console.log(`width: ${map.size.width * 16}px / height: ${map.size.height * 16}px`);
+        console.log(`tiles: ${this.getDensity(map) * map.size.width * map.size.height} tiles`);
+        console.log(`polygon lines: ${this.map.polygon.length} ea`);
     }
 }
 
