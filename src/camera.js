@@ -29,7 +29,7 @@ class Camera {
 
     update(dt) {
         const FOLLOW_COEIFFICIENT = 1.004 ** dt - 1;
-        const ZOOM_COEIFFICIENT = 1.003 ** dt - 1;
+        const ZOOM_COEIFFICIENT = 1.004 ** dt - 1;
         this.updateFollowObj(FOLLOW_COEIFFICIENT);
         this.updateFollowZoom(ZOOM_COEIFFICIENT);
         this.updateStage();
@@ -37,10 +37,33 @@ class Camera {
 
     updateStage() {
         if (this.stage === undefined) return;
+        this.interpolation();
         this.stage.scale.x = this.currentZoom;
         this.stage.scale.y = this.currentZoom;
         this.stage.position.x = this.position.x;
         this.stage.position.y = this.position.y;
+    }
+
+    interpolation() {
+        const BOUNDARY = {
+            X: { MIN: 0, MAX: -this.stage.width / this.stage.scale.x },
+            Y: { MIN: 0, MAX: -this.stage.height / this.stage.scale.y }
+        }
+        if (this.position.x >= BOUNDARY.X.MIN * this.currentZoom && this.position.x <= BOUNDARY.X.MAX * this.currentZoom + this.screenWidth) {
+            this.position.x = ((BOUNDARY.X.MIN * this.currentZoom) + (BOUNDARY.X.MAX * this.currentZoom + this.screenWidth)) / 2;
+        } else if (this.position.x >= BOUNDARY.X.MIN * this.currentZoom) {
+            this.position.x = BOUNDARY.X.MIN * this.currentZoom;
+        } else if (this.position.x <= BOUNDARY.X.MAX * this.currentZoom + this.screenWidth) {
+            this.position.x = BOUNDARY.X.MAX * this.currentZoom + this.screenWidth;
+        }
+
+        if (this.position.y >= BOUNDARY.Y.MIN * this.currentZoom && this.position.y <= BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight) {
+            this.position.y = ((BOUNDARY.Y.MIN * this.currentZoom) + (BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight)) / 2;
+        } else if (this.position.y >= BOUNDARY.Y.MIN * this.currentZoom) {
+            this.position.y = BOUNDARY.Y.MIN * this.currentZoom;
+        } else if (this.position.y <= BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight) {
+            this.position.y = BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight;
+        }
     }
 
     updateFollowObj(coeifficient) {
