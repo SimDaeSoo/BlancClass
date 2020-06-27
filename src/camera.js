@@ -27,7 +27,7 @@ class Camera {
         this.screenHeight = window.innerHeight;
     }
 
-    update() {
+    update(dt) {
         const FOLLOW_COEIFFICIENT = 1.004 ** dt - 1;
         const ZOOM_COEIFFICIENT = 1.003 ** dt - 1;
         this.updateFollowObj(FOLLOW_COEIFFICIENT);
