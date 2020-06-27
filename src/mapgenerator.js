@@ -34,7 +34,6 @@ class MapGenerator {
         this.reverse();
         this.parseTile();
         this.setPolygon();
-        this.printMap(this.map);
     }
 
     setPolygon() {
