@@ -3,6 +3,7 @@ class Camera {
         this.targetZoom = 1;
         this.currentZoom = 1;
         this.position = { x: 0, y: 0 };
+        this.boundary = { x: { min: 0, max: window.innerWidth }, y: { min: 0, max: window.innerHeight } }
         this.stage = undefined;
         this.targetObject = undefined;
         this.screenWidth = window.innerWidth;
@@ -12,6 +13,10 @@ class Camera {
 
     setStage(stage) {
         this.stage = stage;
+    }
+
+    setBoundary(boundary) {
+        this.boundary = boundary;
     }
 
     setObject(targetObject) {
@@ -45,24 +50,20 @@ class Camera {
     }
 
     interpolation() {
-        const BOUNDARY = {
-            X: { MIN: 0, MAX: -this.stage.width / this.stage.scale.x },
-            Y: { MIN: 0, MAX: -this.stage.height / this.stage.scale.y }
-        }
-        if (this.position.x >= BOUNDARY.X.MIN * this.currentZoom && this.position.x <= BOUNDARY.X.MAX * this.currentZoom + this.screenWidth) {
-            this.position.x = ((BOUNDARY.X.MIN * this.currentZoom) + (BOUNDARY.X.MAX * this.currentZoom + this.screenWidth)) / 2;
-        } else if (this.position.x >= BOUNDARY.X.MIN * this.currentZoom) {
-            this.position.x = BOUNDARY.X.MIN * this.currentZoom;
-        } else if (this.position.x <= BOUNDARY.X.MAX * this.currentZoom + this.screenWidth) {
-            this.position.x = BOUNDARY.X.MAX * this.currentZoom + this.screenWidth;
+        if (this.position.x >= this.boundary.x.min * this.currentZoom && this.position.x <= this.boundary.x.max * this.currentZoom + this.screenWidth) {
+            this.position.x = ((this.boundary.x.min * this.currentZoom) + (this.boundary.x.max * this.currentZoom + this.screenWidth)) / 2;
+        } else if (this.position.x >= this.boundary.x.min * this.currentZoom) {
+            this.position.x = this.boundary.x.min * this.currentZoom;
+        } else if (this.position.x <= this.boundary.x.max * this.currentZoom + this.screenWidth) {
+            this.position.x = this.boundary.x.max * this.currentZoom + this.screenWidth;
         }
 
-        if (this.position.y >= BOUNDARY.Y.MIN * this.currentZoom && this.position.y <= BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight) {
-            this.position.y = ((BOUNDARY.Y.MIN * this.currentZoom) + (BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight)) / 2;
-        } else if (this.position.y >= BOUNDARY.Y.MIN * this.currentZoom) {
-            this.position.y = BOUNDARY.Y.MIN * this.currentZoom;
-        } else if (this.position.y <= BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight) {
-            this.position.y = BOUNDARY.Y.MAX * this.currentZoom + this.screenHeight;
+        if (this.position.y >= this.boundary.y.min * this.currentZoom && this.position.y <= this.boundary.y.max * this.currentZoom + this.screenHeight) {
+            this.position.y = ((this.boundary.y.min * this.currentZoom) + (this.boundary.y.max * this.currentZoom + this.screenHeight)) / 2;
+        } else if (this.position.y >= this.boundary.y.min * this.currentZoom) {
+            this.position.y = this.boundary.y.min * this.currentZoom;
+        } else if (this.position.y <= this.boundary.y.max * this.currentZoom + this.screenHeight) {
+            this.position.y = this.boundary.y.max * this.currentZoom + this.screenHeight;
         }
     }
 

@@ -4,12 +4,12 @@ import { merge } from './utils';
 class MapGenerator {
     constructor() {
         this._seedrandom = seedrandom('');
-        this.map = { size: { width: 20, height: 20 }, targetDensity: 0.5, seed: '', tiles: [], position: { x: 0, y: 0 }, polygon: [] };
+        this.map = { size: { width: 20, height: 20 }, targetDensity: 0.5, seed: '', tiles: [], position: { x: 0, y: 0 }, polygon: [], objects: [] };
     }
 
     initialize(size, targetDensity, seed) {
         this._seedrandom = seedrandom(seed);
-        this.map = { size, targetDensity, seed, tiles: [], position: { x: 0, y: 0 }, polygon: [] };
+        this.map = { size, targetDensity, seed, tiles: [], position: { x: 0, y: 0 }, polygon: [], objects: [] };
         for (let y = 0; y < size.height; y++) {
             this.map.tiles.push([]);
             for (let x = 0; x < size.width; x++) {
@@ -34,6 +34,54 @@ class MapGenerator {
         this.reverse();
         this.parseTile();
         this.setPolygon();
+        this.createTouch();
+    }
+
+    createTouch() {
+        const touchTiles = [];
+        for (let y = 1; y < this.map.size.height - 1; y++) {
+            for (let x = 1; x < this.map.size.width - 1; x++) {
+                if (!this.map.tiles[y][x] && (this.map.tiles[y][x - 1] || this.map.tiles[y][x + 1])) {
+                    touchTiles.push({ x, y });
+                } else if (!this.map.tiles[y][x] && (this.map.tiles[y + 1][x])) {
+                    touchTiles.push({ x, y });
+                }
+            }
+        }
+
+        while (this.map.objects.length < 40 && touchTiles.length > 0) {
+            const randomIndex = Math.round(this.seedrandom * (touchTiles.length - 1));
+            const removed = touchTiles.splice(randomIndex, 1)[0];
+            let flag = true;
+
+            this.map.objects.forEach((object) => {
+                const diffX = object.position.x - removed.x;
+                const diffY = object.position.y - removed.y;
+
+                if (Math.sqrt(diffX ** 2 + diffY ** 2) < 20) {
+                    flag = false;
+                }
+            });
+
+            let texture = '/assets/objects/touch/0000.png';
+            if (this.map.tiles[removed.y][removed.x - 1]) {
+                texture = '/assets/objects/touch/0004.png';
+            }
+            if (this.map.tiles[removed.y][removed.x + 1]) {
+                texture = '/assets/objects/touch/0005.png';
+            }
+            if (this.map.tiles[removed.y + 1][removed.x]) {
+                texture = '/assets/objects/touch/0001.png';
+            }
+
+            if (flag) {
+                this.map.objects.push({
+                    type: 'touch',
+                    texture,
+                    position: removed
+                });
+            }
+        }
     }
 
     setPolygon() {
