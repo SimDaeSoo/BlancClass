@@ -34,24 +34,23 @@ class MapGenerator {
         this.reverse();
         this.parseTile();
         this.setPolygon();
-        this.createTouch();
+        this.createTorch();
     }
 
-    createTouch() {
-        const touchTiles = [];
+    // Test..
+    createTorch() {
+        const torchTiles = [];
         for (let y = 1; y < this.map.size.height - 1; y++) {
             for (let x = 1; x < this.map.size.width - 1; x++) {
                 if (!this.map.tiles[y][x] && (this.map.tiles[y][x - 1] || this.map.tiles[y][x + 1])) {
-                    touchTiles.push({ x, y });
-                } else if (!this.map.tiles[y][x] && (this.map.tiles[y + 1][x])) {
-                    touchTiles.push({ x, y });
+                    torchTiles.push({ x, y });
                 }
             }
         }
 
-        while (this.map.objects.length < 40 && touchTiles.length > 0) {
-            const randomIndex = Math.round(this.seedrandom * (touchTiles.length - 1));
-            const removed = touchTiles.splice(randomIndex, 1)[0];
+        while (this.map.objects.length < 40 && torchTiles.length > 0) {
+            const randomIndex = Math.round(this.seedrandom * (torchTiles.length - 1));
+            const removed = torchTiles.splice(randomIndex, 1)[0];
             let flag = true;
 
             this.map.objects.forEach((object) => {
@@ -63,20 +62,17 @@ class MapGenerator {
                 }
             });
 
-            let texture = '/assets/objects/touch/0000.png';
+            let texture = '/assets/objects/torch/0000.png';
             if (this.map.tiles[removed.y][removed.x - 1]) {
-                texture = '/assets/objects/touch/0004.png';
+                texture = '/assets/objects/torch/0004.png';
             }
             if (this.map.tiles[removed.y][removed.x + 1]) {
-                texture = '/assets/objects/touch/0005.png';
-            }
-            if (this.map.tiles[removed.y + 1][removed.x]) {
-                texture = '/assets/objects/touch/0001.png';
+                texture = '/assets/objects/torch/0005.png';
             }
 
             if (flag) {
                 this.map.objects.push({
-                    type: 'touch',
+                    type: 'torch',
                     texture,
                     position: removed
                 });
@@ -323,28 +319,6 @@ class MapGenerator {
             }
         }
         return currentDensity / maxDensity;
-    }
-
-    printMap(map) {
-        for (let y = 0; y < map.size.height; y++) {
-            let line = '';
-
-            for (let x = 0; x < map.size.width; x++) {
-                if (map.tiles[y][x]) {
-                    line += '■ ';
-                } else {
-                    line += '  ';
-                }
-            }
-
-            console.log(line);
-        }
-
-        console.log(`seed: ${this.map.seed}`);
-        console.log(`target density: ${map.targetDensity * 100}% / density: ${this.getDensity(map) * 100}%`);
-        console.log(`width: ${map.size.width * 16}px / height: ${map.size.height * 16}px`);
-        console.log(`tiles: ${this.getDensity(map) * map.size.width * map.size.height} tiles`);
-        console.log(`polygon lines: ${this.map.polygon.length} ea`);
     }
 }
 
